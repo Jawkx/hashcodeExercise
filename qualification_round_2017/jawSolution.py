@@ -1,133 +1,112 @@
 class Request:
-    def __init__(self,ID,vidID,NoR,Enp):
+    def __init__(self,ID,vidID,NoR,Enp , vidSize):
         self.ID = ID
         self.vidID = vidID
         self.NoR = NoR
         self.Enp = Enp
-
+        self.vidSize = videoSize
+        self.savedTime = 0
         self.fullfilled = False
-    
-    def updateFullfilled()
+        
+    def checkFillable(self , remainingVal ):
+        storedValue = remainingVal - videoSize
+        if storedValue >= 0:
+            return( storedValue )
+        else:
+            return None
+
+    def updateFullfilled(self):
         self.fullfilled = True
     
+    def updateSavedTime(self , value ):
+        self.savedTime = value
 
 class Cache:
-    def __init__(self,ID):
+    def __init__(self, ID , cacheSize):
         self.ID = ID
         self.storage = cacheSize
-        self.score = 0
-        self.connections = {
-            # Endpoint : (DC lat , cache latency)
-        }
-        self.requests = { 
-            # VideoID : (Size,Endpoint,Magnitude) 
-        }
-        self.savedTimes = []
-        self.videos = []
-    
-    def hasVid(self,inputVid):
-        if inputVid in self.videos:
-            return True
-        else:
-            return False
+        self.timeSavedRanking = []
+        self.requests = {
+            # timeSaved : RequestOBJ
 
-    def checkStorage(self,val):
-        if ( (self.storage - val) < 0 ):
-            return False
-        else:
-            return True
+        }
+        self.videosStored = []
+        self.totalTimeSaved = 0
     
-    def changeStorage(self,val):
-        self.storage = self.storage + val 
+    def receiveRequest(self, requestObj , latencyDiff):
+        timeSaved = requestObj.NoR * latencyDiff
+        self.requests[ timeSaved ] = requestObj
     
-    def addRequest(self, size ,videoID , endpoint , numberOfRequest):
-        self.requests[videoID] = ( size ,endpoint,numberOfRequest)
-    
-    def calculateSavedTime(self):
-        for video in self.requests:
-            size ,endpoint , numberOfRequests = self.requests[video]
-            # endpoint = self.requests[video][1]
-            # numberOfRequest = self.requests[video][2]
-            
-            if self.connections[endpoint] and (video not in self.videos):
-                savedTime = (self.connections[endpoint][0] - self.connections[endpoint][1]) * numberOfRequests
-                self.savedTimes.append((video,savedTime))
-            print("At cache" ,self.ID ,"placing video",video ,"will save", savedTime , "ms")
-     
-    def populateVideo(self,fileSize):
-        self.savedTimes.sort( key = lambda x:x[1] , reverse=True)
-        print(self.savedTimes)
+    def sortRequest(self):
+        self.timeSavedRanking = sorted(self.requests , reverse=True)
 
-    def addConnection(self , endpoint , latencyDC , latencyCache):
-        self.connections[ endpoint ] = (latencyDC , latencyCache)
-        
-    def checkUsed(self):
-        if (len(self.videos) > 0 ):
-            return True
-        else:
-            return False
-    
-    def isID(self,arr):
-        if self.ID in arr:
-            return True
-        else:
-            return False
-    
-    def addVideo(self,vidID):
-        self.videos.append(vidID)
+    def populateCache(self):
+        print("Populating Cache" , self.ID)
+        for timeSaved in self.timeSavedRanking:
+            requestObj = self.requests[timeSaved]
+            fullfillStatus = not requestObj.fullfilled
+
+            remainingValue = requestObj.checkFillable(self.storage)
+
+            if fullfillStatus and remainingValue != None and (requestObj.vidID not in self.videosStored ) :
+                self.videosStored.append(requestObj.vidID)
+                
+                self.storage = remainingValue
+                
+                requestObj.updateFullfilled()
+                requestObj.updateSavedTime( timeSaved )
+
+        return self.totalTimeSaved
 
 class Endpoint:
-    def __init__(self, ID, latencyDC , connections):
-        self.ID = ID
+    def __init__(self,ID,latencyDC):
+        self.ID = ID 
         self.latencyDC = latencyDC
-        self.connections = connections
+        self.connections = {
+            # CACHE NUMBER : #LATENCY
+        }
+        self.requests = []
 
-    def isID(self,val):
-        if (self.ID == val):
-            return True
-        else:
-            return False
+    def addRequest(self,requestObj):
+        self.requests.append(requestObj)
     
-    def haveCache(self):
-        if (self.connections):
-            return True
-        else:
-            return false
+    def updateConnections( self, cacheID , cacheLat):
+        self.connections[cacheID] = cacheLat
+    
+    def sendRequest(self):
+        idx = 0
+        for cacheNo in self.connections:
+            print("Sending request to" ,cacheNo , "from endpoint" , self.ID)
+            latencyDiff = self.latencyDC - self.connections[cacheNo]
 
-    def getConnectedCache(self):
-        return [ item[0] for item in self.connections ]
+            for requestObj in self.requests:
+                caches[cacheNo].receiveRequest(requestObj,latencyDiff)
 
-    def checkConnection(self,val):
-        if (val in self.connections):
-            return True
-            
-    def getConnectionCount(self):
-        return len(self.connections)
-
-f = open("testing.txt","r")
+### Starting        
+# f = open("testing.txt","r")
 # f = open("me_at_the_zoo.in" , "r")
-input_data = f.read().splitlines()
+# f = open("videos_worth_spreading.in" , "r")
+# f = open("trending_today.in" , "r")
+# f = open("kittens.in.txt" , "r")
 
-print("Loading Data")
+input_data = f.read().splitlines()
 currentLine = input_data[0].split(" ")
 numberOfCache = int(currentLine[3])
 numberOfEndPoints = int(currentLine[1])
 cacheSize = int(currentLine[4])
-totalRequest = int(currentLine[2])
+numOfRequest = int(currentLine[2])
 input_data.pop(0)
 
 currentLine = input_data[0].split(" ")
 fileSize = list( map(int,currentLine))
 input_data.pop(0)
 
-print("Generating caches")
-# Generating Caches
+print("Generating caches ... ")
 caches = []
 for x in range (numberOfCache):
-    caches.append(Cache(x))
+    caches.append(Cache(x,cacheSize))
 
-print("Generating endpoints")
-# Generating endpoints
+print("Generating Endpoints ... ")
 endpoints = []
 for x in range(numberOfEndPoints):
     currentConnections = []
@@ -135,86 +114,60 @@ for x in range(numberOfEndPoints):
     dataCenterLat = int(currentLine[0])
     currentNumberOfCache = int(currentLine[1])
     input_data.pop(0)
-    
+
+    currentEndpoint = Endpoint(x,dataCenterLat)
+
     for j in range(currentNumberOfCache):
         currentLine = input_data[0].split(" ")
-        currentConnections.append( ( int(currentLine[0]) , int(currentLine[1])))
+        currentCacheNo = int(currentLine[0])
+        currentCacheLat = int(currentLine[1])
+        currentEndpoint.updateConnections(currentCacheNo,currentCacheLat)
+        
         input_data.pop(0)
 
-    for currentConnection in currentConnections:
-        currentCache = currentConnection[0]
-        currentCacheLat = currentConnection[1]
+    endpoints.append(currentEndpoint)
 
-        caches[currentCache].addConnection( x, dataCenterLat,currentCacheLat )
+print("Parsing Request ... ")
 
-    endpoints.append(Endpoint(x,dataCenterLat,currentConnections))
-    
-    
-endpointsWithCache = list(filter(lambda x:x.getConnectionCount() , endpoints))
-
-#print(endpoints[0].getConnectedCache())
 requests = []
-
+requestNo = 0
+totalNumberOfRequest = 0
 for data in input_data:
-    request = list ( map(int, data.split(" ")))
-    requests.append(request)
+    currentRequestData = list ( map(int, data.split(" ")))
+    [videoID,endpointNo,NOReq] = currentRequestData
+    totalNumberOfRequest += NOReq
+    videoSize = fileSize[videoID]
+    if videoSize <= cacheSize :
+        request = Request(requestNo,videoID,NOReq,endpointNo,videoSize)
+        requests.append(request)
+        endpoints[endpointNo].addRequest(request)
+        
+#print(endpoints[1].requests)
 
-for request in requests:
-    [currentVideoID , currentEndpoint , currentRequestCount] = request
-    connectedCaches = endpoints[currentEndpoint].getConnectedCache()
-    
-    for cache in connectedCaches:
-        if fileSize[currentVideoID] <= cacheSize:
-            caches[cache].addRequest( fileSize[currentVideoID],currentVideoID,currentEndpoint,currentRequestCount)
+print("Sending Requests")
+
+for endpoint in endpoints:
+    endpoint.sendRequest()
+
+print("Calculating request")
+
+totalTimeSaved = 0
 
 for cache in caches:
-    cache.calculateSavedTime()
-    cache.populateVideo(fileSize)
-
-###UNDER DEVELOPMENT LATER UNCOMENT ALL###
-# idx = 0
-# for request in requests:
-#     idx = idx+1
-#     #print("currently processing request " + str(idx))
-#     currentVideoID = request[0]
-#     currentEndpoint = request[1]
-
-#     currentFileSize = fileSize[currentVideoID]
-
-#     if (currentFileSize > cacheSize):
-#         continue
-
+    cache.sortRequest()
+    totalTimeSaved += cache.populateCache()
+    print( "At cache" , cache.ID , "Video Stored was" , cache.videosStored)
     
-#     matchingEndPoints = list(filter( lambda x:x.isID(currentEndpoint) , endpointsWithCache))
 
-#     if not matchingEndPoints:
-#         continue
+score = (totalTimeSaved/totalNumberOfRequest)*1000
 
-#     #End point have cache
-#     currentEndpointObj = matchingEndPoints[0]
-#     currentCacheOptions = currentEndpointObj.getLeastLatencyCache()
+print("calculatingScore")
 
-#     for currentCacheOption in currentCacheOptions:
-#         currentCache = caches[currentCacheOption]
-#         if currentCache.checkStorage(currentFileSize): #enough storage
-#             currentCache.addVideo(currentVideoID)
-#             currentCache.changeStorage(-currentFileSize)
-#             continue
+totalTimeSaved = 0
+for request in requests:
+    totalTimeSaved += request.savedTime
+    print(request.savedTime)
 
-
-# cachesUsed = len(list(filter( lambda x:x.checkUsed(),caches)))
-# print(cachesUsed)
-# outF = open("out.txt","w")
-# outF = open("out.txt","a")
-
-# outF.write(str(cachesUsed) + "\n")
-# print("====ANSWER====")
-# idx = 0
-# for cache in caches:
-#     outF.write(str(idx) + " ")
-#     for video in cache.videos:
-#         outF.write(str(video) +" ")
-    
-#     outF.write("\n")
-#     idx+=1
-
+score = (totalTimeSaved/totalNumberOfRequest)*1000
+print( " TOTAL TIME SAVED:" , totalTimeSaved)
+print(" TOTAL SCORE:" , score )
