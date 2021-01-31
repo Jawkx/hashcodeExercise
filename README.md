@@ -29,3 +29,15 @@ Shitty code by me, please beware. Will vomit if read seriously
 | e_so_many_books          | 3332715  |
 | f_libraries_of_the_world | 4833572  |
 | Total                    | 24723940 |
+
+#### 2nd Attempt
+
+| Round                    | Score    |
+| ------------------------ | -------- |
+| a_example                | 21       |
+| b_read_on                | 5822900  |
+| C_incunabula             | 5689822  |
+| d_tough_choices          | 5032560  |
+| e_so_many_books          | 5089288  |
+| f_libraries_of_the_world | 5216624  |
+| Total                    | 26851215 |
